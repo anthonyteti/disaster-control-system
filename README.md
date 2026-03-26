@@ -13,22 +13,41 @@ A distributed system that simulates how emergency units (police, fire, ambulance
 ## Architecture
 
 ```
-                          incident_exchange (fanout)
-Incident Service  ──publish──>  RabbitMQ  ──consume──>  Dispatch Service
-                                  │                        │
-                                  │                   dispatch_exchange
-                                  │                        │
-                                  ├──────────────────>  Unit Service
-                                  │                        │
-                                  │                   status_exchange
-                                  │                        │
-                                  ├<─────────────────  (status updates)
-                                  │
-                            Dashboard Service
-                          (listens to all 3 exchanges
-                           via exclusive queues)
-                                  │
-                              Browser (SSE)
+┌──────────────────┐         incident_exchange         ┌──────────────────────┐
+│  Incident Service│───publish──►  (fanout)  ──consume──►   Dispatch Service  │
+│                  │            ┌──────────┐            │                      │
+│ Generates random │            │          │            │ - Composite scoring  │
+│ or user-triggered│            │ RabbitMQ │            │ - Risk-aware assign  │
+│ emergencies      │            │  Broker  │            │ - Dual-unit dispatch │
+└──────────────────┘            │          │            └───────────┬──────────┘
+                                │          │                        │
+                                │          │              dispatch_exchange
+                                │          │                        │
+                                │          │            ┌───────────▼──────────┐
+                                │          │◄───────────┤    Unit Service      │
+                                │          │  status_   │                      │
+                                │          │  exchange  │ Simulates lifecycle: │
+                                │          │            │ en_route → on_scene  │
+                                │          │            │ → completed          │
+                                │          │            └──────────────────────┘
+                                └────┬─────┘
+                                     │
+                          ┌──────────▼───────────┐
+                          │  Dashboard Service   │
+                          │                      │
+                          │ Listens to ALL 3     │
+                          │ exchanges via its    │
+                          │ own exclusive queues  │
+                          └──────────┬───────────┘
+                                     │ SSE
+                          ┌──────────▼───────────┐
+                          │   Browser (Web UI)   │
+                          │                      │
+                          │ - 7×7 Risk Heatmap   │
+                          │ - Unit Status Table  │
+                          │ - Neighborhood Risk  │
+                          │ - Live Event Log     │
+                          └──────────────────────┘
 ```
 
 ### Services
