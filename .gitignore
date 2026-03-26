@@ -1,0 +1,19 @@
+# Virtual environment
+venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+
+# Claude Code
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db

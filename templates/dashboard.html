@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Disaster Control Dashboard</title>
+<style>
+/* ---- reset & base ---- */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0f1923;color:#cfd8dc;min-height:100vh}
+
+/* ---- header ---- */
+.header{background:#1a2733;padding:14px 24px;border-bottom:2px solid #263842;display:flex;align-items:center;gap:12px}
+.header h1{font-size:18px;font-weight:600;color:#4fc3f7;letter-spacing:.5px}
+.dot{width:10px;height:10px;border-radius:50%;background:#4caf50;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.header .stats{margin-left:auto;font-size:13px;color:#78909c;display:flex;gap:18px}
+.header .stats span{color:#b0bec5;font-weight:600}
+
+/* ---- layout ---- */
+.main{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr auto 1fr;gap:14px;padding:14px;height:calc(100vh - 54px)}
+.panel{background:#1a2733;border:1px solid #263842;border-radius:8px;padding:14px;display:flex;flex-direction:column;overflow:hidden}
+.panel h2{font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:#546e7a;margin-bottom:10px;flex-shrink:0}
+.panel-grid{grid-row:span 3}
+
+/* ---- grid map ---- */
+.grid-wrap{flex:1;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(7,1fr);gap:3px}
+.cell{position:relative;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:3px;min-height:0;transition:background .3s}
+.cell-coord{position:absolute;top:1px;left:4px;font-size:8px;color:rgba(255,255,255,.3)}
+.cell-nb{position:absolute;bottom:1px;right:3px;font-size:7px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.3px}
+.badge{font-size:10px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap}
+.t-police{background:#1565c0;color:#bbdefb}
+.t-fire{background:#c62828;color:#ffcdd2}
+.t-ambulance{background:#2e7d32;color:#c8e6c9}
+.badge.busy{opacity:.55;filter:saturate(.5)}
+.inc-marker{font-size:14px;animation:inc-pulse 1s infinite;line-height:1}
+@keyframes inc-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+
+/* ---- neighborhood risk ---- */
+.nb-wrap{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.nb-card{background:#0d1620;border:1px solid #1e3040;border-radius:6px;padding:10px}
+.nb-card h3{font-size:12px;color:#b0bec5;margin-bottom:6px}
+.nb-bar{height:6px;border-radius:3px;background:#1e3040;overflow:hidden;margin-bottom:4px}
+.nb-bar-fill{height:100%;border-radius:3px;transition:width .5s}
+.nb-stat{font-size:11px;color:#546e7a;display:flex;justify-content:space-between}
+
+/* ---- unit table ---- */
+.unit-scroll{flex:1;overflow-y:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:5px 7px;text-align:left;font-size:12px;border-bottom:1px solid #1e3040}
+th{color:#546e7a;font-weight:500;position:sticky;top:0;background:#1a2733}
+.st{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;display:inline-block}
+.st-available{background:#1b5e20;color:#a5d6a7}
+.st-dispatched{background:#bf360c;color:#ffab91}
+.st-en_route{background:#e65100;color:#ffcc80}
+.st-on_scene{background:#4a148c;color:#ce93d8}
+.st-busy{background:#4e342e;color:#bcaaa4}
+.st-completed{background:#1b5e20;color:#a5d6a7}
+
+/* ---- event log ---- */
+.log-scroll{flex:1;overflow-y:auto;font-family:Consolas,'Courier New',monospace;font-size:12px}
+.ev{padding:4px 8px;border-bottom:1px solid #141e27;display:flex;gap:8px;align-items:baseline}
+.ev-time{color:#455a64;min-width:75px;flex-shrink:0}
+.ev-tag{padding:1px 7px;border-radius:3px;font-size:10px;font-weight:700;min-width:72px;text-align:center;flex-shrink:0}
+.ev-tag-incident{background:#ef6c00;color:#fff}
+.ev-tag-dispatch{background:#1976d2;color:#fff}
+.ev-tag-status{background:#7b1fa2;color:#fff}
+.ev-msg{color:#90a4ae}
+
+/* risk legend */
+.legend{display:flex;gap:8px;align-items:center;margin-top:6px;flex-shrink:0}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:#78909c}
+.legend-swatch{width:14px;height:10px;border-radius:2px}
+
+/* ---- incident generator controls ---- */
+.gen-bar{display:flex;gap:8px;align-items:center;flex-shrink:0;margin-top:8px;flex-wrap:wrap}
+.gen-bar select,.gen-bar input{background:#0d1620;border:1px solid #1e3040;color:#cfd8dc;padding:4px 8px;border-radius:4px;font-size:12px}
+.gen-bar select{min-width:90px}
+.gen-bar input[type=number]{width:50px}
+.btn{padding:5px 14px;border:none;border-radius:4px;font-size:12px;font-weight:700;cursor:pointer;transition:background .2s}
+.btn-fire{background:#c62828;color:#fff}.btn-fire:hover{background:#e53935}
+.btn-rand{background:#00838f;color:#fff}.btn-rand:hover{background:#0097a7}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="dot"></div>
+  <h1>DISASTER CONTROL SYSTEM &mdash; LIVE DASHBOARD</h1>
+  <div class="stats">
+    Active incidents: <span id="h-active">0</span>
+    &nbsp;|&nbsp; Units available: <span id="h-avail">9</span> / 9
+    &nbsp;|&nbsp;
+    <button class="btn btn-rand" onclick="genIncident()">Generate Random Incident</button>
+    <select id="gen-type"><option value="">Random Type</option><option value="fire">Fire</option><option value="police">Police</option><option value="ambulance">Ambulance</option></select>
+    <select id="gen-sev"><option value="">Random Sev</option><option value="1">Sev 1</option><option value="2">Sev 2</option><option value="3">Sev 3</option><option value="4">Sev 4</option><option value="5">Sev 5</option></select>
+  </div>
+</div>
+
+<div class="main">
+  <!-- left: grid (spans 3 rows) -->
+  <div class="panel panel-grid">
+    <h2>Grid Map (7 &times; 7) &mdash; Risk Heatmap</h2>
+    <div class="grid-wrap" id="grid"></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-swatch" style="background:#1b5e20"></div>Low risk</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#f9a825"></div>Medium</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#d84315"></div>High risk</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,255,255,.08);border:1px dashed #37474f"></div>Unknown</div>
+    </div>
+  </div>
+
+  <!-- right-top: unit status -->
+  <div class="panel">
+    <h2>Unit Status</h2>
+    <div class="unit-scroll">
+      <table>
+        <thead><tr><th>Unit</th><th>Type</th><th>Location</th><th>Status</th><th>Incident</th></tr></thead>
+        <tbody id="utbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- right-middle: neighborhood risk -->
+  <div class="panel">
+    <h2>Neighborhood Risk</h2>
+    <div class="nb-wrap" id="nb-risk"></div>
+  </div>
+
+  <!-- right-bottom: event log -->
+  <div class="panel">
+    <h2>Event Log</h2>
+    <div class="log-scroll" id="log"></div>
+  </div>
+</div>
+
+<script>
+// ===== state =====
+let units = {};
+let incidents = {};
+let heatmap = [];      // [{x, y, neighborhood, risk}, ...]
+let nbSummary = [];    // [{neighborhood, base_risk, effective_risk, ...}, ...]
+const ICONS = {fire:'\u{1F525}',police:'\u{1F6A8}',ambulance:'\u{1F691}'};
+const TYPE_CLS = {police:'t-police',fire:'t-fire',ambulance:'t-ambulance'};
+const NB_COLORS = {Downtown:'#42a5f5',Suburb:'#66bb6a',Industrial:'#ef5350',Residential:'#ab47bc',Unknown:'#546e7a'};
+const NB_SHORT = {Downtown:'DT',Suburb:'SB',Industrial:'IN',Residential:'RE',Unknown:''};
+
+// ===== risk color helper =====
+function riskBg(risk){
+  if(risk<=0.35) return 'rgba(27,94,32,0.35)';
+  if(risk<=0.55) return 'rgba(249,168,37,0.25)';
+  if(risk<=0.75) return 'rgba(230,81,0,0.3)';
+  return 'rgba(216,67,21,0.45)';
+}
+
+function riskBarColor(risk){
+  if(risk<=0.35) return '#4caf50';
+  if(risk<=0.55) return '#fbc02d';
+  if(risk<=0.75) return '#ef6c00';
+  return '#d32f2f';
+}
+
+// ===== build heatmap lookup =====
+let heatLookup = {};
+function buildHeatLookup(){
+  heatLookup = {};
+  for(const c of heatmap) heatLookup[c.x+','+c.y] = c;
+}
+
+// ===== renderers =====
+
+function renderGrid(){
+  const g=document.getElementById('grid');
+  g.innerHTML='';
+  for(let r=0;r<=6;r++){
+    for(let c=0;c<=6;c++){
+      const d=document.createElement('div');
+      d.className='cell';
+      const cell=heatLookup[c+','+r];
+      const risk=cell?cell.risk:0.5;
+      const nb=cell?cell.neighborhood:'Unknown';
+      d.style.background=riskBg(risk);
+      d.style.border='1px solid '+(nb!=='Unknown'?'rgba(255,255,255,.08)':'rgba(55,71,79,.4)');
+      d.innerHTML=`<span class="cell-coord">${c},${r}</span>`;
+      if(NB_SHORT[nb]) d.innerHTML+=`<span class="cell-nb">${NB_SHORT[nb]}</span>`;
+
+      const wrap=document.createElement('div');
+      wrap.style.cssText='display:flex;flex-wrap:wrap;justify-content:center;gap:2px';
+
+      // units
+      for(const[id,u]of Object.entries(units)){
+        if(u.location[0]===c&&u.location[1]===r){
+          const b=document.createElement('span');
+          b.className='badge '+TYPE_CLS[u.type];
+          if(u.status!=='available')b.classList.add('busy');
+          b.textContent=id;
+          b.title=`${id} (${u.type}) — ${u.status}`;
+          wrap.appendChild(b);
+        }
+      }
+
+      // active incidents
+      for(const[id,inc]of Object.entries(incidents)){
+        if(inc.status==='resolved')continue;
+        const loc=inc.data.location||inc.data.incident_location;
+        const itype=inc.data.type||inc.data.incident_type;
+        if(loc&&loc[0]===c&&loc[1]===r){
+          const m=document.createElement('span');
+          m.className='inc-marker';
+          m.textContent=ICONS[itype]||'\u26A0\uFE0F';
+          const rl=inc.data.risk_level;
+          m.title=`Incident ${id} (${itype}) — ${inc.status}`+(rl!=null?` — risk ${rl}`:'');
+          wrap.appendChild(m);
+        }
+      }
+      d.appendChild(wrap);
+      g.appendChild(d);
+    }
+  }
+}
+
+function renderUnits(){
+  const tb=document.getElementById('utbody');
+  tb.innerHTML='';
+  for(const[id,u]of Object.entries(units)){
+    const tr=document.createElement('tr');
+    const incText=u.incident?u.incident:'—';
+    tr.innerHTML=`
+      <td><span class="badge ${TYPE_CLS[u.type]}">${id}</span></td>
+      <td>${u.type}</td>
+      <td>[${u.location.join(', ')}]</td>
+      <td><span class="st st-${u.status}">${u.status.replace('_',' ')}</span></td>
+      <td style="font-size:11px;color:#78909c">${incText}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+function renderNeighborhoods(){
+  const wrap=document.getElementById('nb-risk');
+  wrap.innerHTML='';
+  for(const nb of nbSummary){
+    const c=document.createElement('div');
+    c.className='nb-card';
+    c.innerHTML=`
+      <h3 style="color:${NB_COLORS[nb.neighborhood]||'#b0bec5'}">${nb.neighborhood}</h3>
+      <div class="nb-bar"><div class="nb-bar-fill" style="width:${Math.round(nb.effective_risk*100)}%;background:${riskBarColor(nb.effective_risk)}"></div></div>
+      <div class="nb-stat"><span>Risk: ${nb.effective_risk}</span><span>Active: ${nb.active_incidents}</span></div>
+      <div class="nb-stat"><span>Base: ${nb.base_risk}</span><span>Historical: ${nb.historical_incidents}</span></div>`;
+    wrap.appendChild(c);
+  }
+}
+
+function renderStats(){
+  let active=0,avail=0;
+  for(const inc of Object.values(incidents)) if(inc.status!=='resolved') active++;
+  for(const u of Object.values(units)) if(u.status==='available') avail++;
+  document.getElementById('h-active').textContent=active;
+  document.getElementById('h-avail').textContent=avail;
+}
+
+function render(){renderGrid();renderUnits();renderNeighborhoods();renderStats();}
+
+function addLog(type,msg){
+  const log=document.getElementById('log');
+  const d=document.createElement('div');
+  d.className='ev';
+  const t=new Date().toLocaleTimeString();
+  d.innerHTML=`<span class="ev-time">${t}</span><span class="ev-tag ev-tag-${type}">${type.toUpperCase()}</span><span class="ev-msg">${msg}</span>`;
+  log.prepend(d);
+  while(log.children.length>200)log.removeChild(log.lastChild);
+}
+
+// ===== periodically refresh risk data =====
+function refreshRisk(){
+  fetch('/risk').then(r=>r.json()).then(data=>{
+    heatmap=data.heatmap||[];
+    nbSummary=data.neighborhoods||[];
+    buildHeatLookup();
+    renderGrid();
+    renderNeighborhoods();
+  }).catch(()=>{});
+}
+
+// ===== SSE =====
+const src=new EventSource('/events');
+src.onmessage=function(e){
+  const ev=JSON.parse(e.data);
+
+  if(ev.type==='init'){
+    units=ev.units;
+    incidents=ev.incidents||{};
+    heatmap=ev.heatmap||[];
+    nbSummary=ev.neighborhoods||[];
+    buildHeatLookup();
+    render();
+    addLog('status','Dashboard connected');
+    return;
+  }
+
+  if(ev.type==='heartbeat')return;
+
+  if(ev.type==='incident'){
+    const d=ev.data;
+    incidents[d.incident_id]={data:d,status:'new',assigned_unit:null};
+    const rl=d.risk_level!=null?` — risk <b>${d.risk_level}</b>`:'';
+    addLog('incident',`${ICONS[d.type]||''} New <b>${d.type}</b> at [${d.location}] sev=${d.severity}${rl}`);
+    refreshRisk();
+  }
+
+  if(ev.type==='dispatch'){
+    const d=ev.data;
+    if(incidents[d.incident_id]){
+      incidents[d.incident_id].status='dispatched';
+      incidents[d.incident_id].assigned_unit=d.unit_id;
+    } else {
+      incidents[d.incident_id]={data:{incident_id:d.incident_id,type:d.incident_type,location:d.incident_location,risk_level:d.risk_level},status:'dispatched',assigned_unit:d.unit_id};
+    }
+    if(units[d.unit_id]){
+      units[d.unit_id].status='dispatched';
+      units[d.unit_id].incident=d.incident_id;
+    }
+    // Handle additional unit for high-risk dispatch
+    if(d.additional_unit_id && units[d.additional_unit_id]){
+      units[d.additional_unit_id].status='dispatched';
+      units[d.additional_unit_id].incident=d.incident_id;
+    }
+    let extra=d.additional_unit_id?` + <b>${d.additional_unit_id}</b> (high risk)`:'';
+    addLog('dispatch',`<b>${d.unit_id}</b> dispatched to <b>${d.incident_type}</b> at [${d.incident_location}]${extra}`);
+  }
+
+  if(ev.type==='status'){
+    const d=ev.data;
+    if(d.status==='completed'){
+      // Free all units involved
+      const allIds=d.all_unit_ids||[d.unit_id];
+      for(const uid of allIds){
+        if(units[uid]){
+          const iid=units[uid].incident;
+          if(iid&&incidents[iid])incidents[iid].status='resolved';
+          units[uid].status='available';
+          units[uid].incident=null;
+        }
+      }
+      refreshRisk();
+    } else {
+      if(units[d.unit_id]) units[d.unit_id].status=d.status;
+    }
+    addLog('status',`<b>${d.unit_id}</b> &rarr; ${d.status.replace('_',' ')}`);
+  }
+
+  render();
+};
+src.onerror=function(){addLog('status','Connection lost — reconnecting...');};
+
+// ===== Incident Generator =====
+function genIncident(){
+  const body={};
+  const t=document.getElementById('gen-type').value;
+  const s=document.getElementById('gen-sev').value;
+  if(t) body.type=t;
+  if(s) body.severity=parseInt(s);
+  fetch('/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(r=>{if(!r.ok) throw new Error(r.status);})
+    .catch(e=>addLog('status','Failed to generate incident: '+e.message));
+}
+</script>
+</body>
+</html>
