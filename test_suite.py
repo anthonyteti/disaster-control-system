@@ -94,8 +94,8 @@ class TestStaticRisk(unittest.TestCase):
     def test_boundary_3_0_is_suburb(self):
         self.assertEqual(get_neighborhood_risk([3, 0]), get_neighborhood_risk([4, 1]))
 
-    def test_out_of_zone_returns_default(self):
-        self.assertAlmostEqual(get_neighborhood_risk([6, 6]), _ra._DEFAULT_RISK)
+    def test_corner_6_6_is_residential(self):
+        self.assertEqual(get_neighborhood_risk([6, 6]), get_neighborhood_risk([4, 4]))
 
     def test_risk_capped_at_1(self):
         for nb in neighborhoods:

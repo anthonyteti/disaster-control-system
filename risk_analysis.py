@@ -1,8 +1,8 @@
 neighborhoods = [
     {"id": "Downtown",    "bounds": [[0, 3], [0, 3]], "risk_level": 0.3},
-    {"id": "Suburb",      "bounds": [[3, 6], [0, 3]], "risk_level": 0.6},
-    {"id": "Industrial",  "bounds": [[0, 3], [3, 6]], "risk_level": 0.9},
-    {"id": "Residential", "bounds": [[3, 6], [3, 6]], "risk_level": 0.5},
+    {"id": "Suburb",      "bounds": [[3, 7], [0, 3]], "risk_level": 0.6},
+    {"id": "Industrial",  "bounds": [[0, 3], [3, 7]], "risk_level": 0.9},
+    {"id": "Residential", "bounds": [[3, 7], [3, 7]], "risk_level": 0.5},
 ]
 
 _DEFAULT_RISK = 0.5
