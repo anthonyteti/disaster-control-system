@@ -141,7 +141,25 @@ The test suite validates risk analysis, composite scoring, dispatch logic, and s
 python test_suite.py
 ```
 
-All 55 tests should pass.
+All 55 legacy tests should pass. Some dispatch and status tests in that suite
+reimplement behavior rather than invoking production services.
+
+The additional service tests import the actual dispatch and status-listener
+modules and mock only the RabbitMQ connection boundary:
+
+```bash
+python -m unittest test_services -v
+```
+
+These check eligible-unit selection and the listener's separate fanout
+subscription. They require the Python dependencies, but no running broker.
+They do not replace an end-to-end test with RabbitMQ and all services running.
+
+### Simulation limits
+
+State is held in memory, consumers use automatic acknowledgements, and incidents
+with no available unit are not queued for retry. The project demonstrates dispatch
+and messaging concepts; durable recovery and overload handling remain future work.
 
 ## Key Features
 
