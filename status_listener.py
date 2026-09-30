@@ -1,6 +1,6 @@
 import json
 
-from common import STATUS_QUEUE, get_rabbitmq_connection
+from common import STATUS_EXCHANGE, get_rabbitmq_connection
 
 
 def callback(ch, method, properties, body):
@@ -11,8 +11,14 @@ def callback(ch, method, properties, body):
 def main():
     connection, channel = get_rabbitmq_connection()
 
+    # A separate fanout subscription observes events without taking the
+    # dispatcher's completion messages from its work queue.
+    result = channel.queue_declare(queue="", exclusive=True)
+    listener_queue = result.method.queue
+    channel.queue_bind(exchange=STATUS_EXCHANGE, queue=listener_queue)
+
     channel.basic_consume(
-        queue=STATUS_QUEUE,
+        queue=listener_queue,
         on_message_callback=callback,
         auto_ack=True
     )
